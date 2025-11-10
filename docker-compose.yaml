@@ -1,12 +1,11 @@
 services:
   file_api:
-    image: file-api-image:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: file_api_container
     ports:
-      - "8080:8080"
-    environment:
-      - FILE_API_ENV=production
-      - FILE_API_DEBUG=false
+      - "8000:8000"
     volumes:
       - ./data:/app/data
     restart: unless-stopped

@@ -3,6 +3,8 @@ from typing import Literal
 
 import yaml
 
+from .env import BASE_DIR
+
 
 class FileHandler:
     def __init__(self, base_folder: str):
@@ -200,7 +202,13 @@ class FileHandler:
     def update_frontmatter(self, file_path: str, frontmatter: dict) -> None:
         original_fm = self.get_frontmatter(file_path)
 
-        # merge frontmatter
         updated_fm = {**original_fm, **frontmatter}
 
+        if original_fm == updated_fm:
+            return
+
         self.__update_file(file_path, updated_fm, None)
+
+
+def get_file_handler(base_folder: str = BASE_DIR) -> FileHandler:
+    return FileHandler(base_folder=base_folder)

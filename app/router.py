@@ -1,11 +1,10 @@
 from typing import Literal, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from loguru import logger
 
-from .env import BASE_DIR
-from .file_handler import FileHandler
+from .file_handler import FileHandler, get_file_handler
 
 
 class FileContent(BaseModel):
@@ -15,13 +14,12 @@ class FileContent(BaseModel):
 
 router = APIRouter()
 
-fh = FileHandler(base_folder=BASE_DIR)
-
 
 @router.get("/")
 async def list_files(
     path: str = "",
     type: Literal["files", "files_all", "dirs", "dirs_all"] = "files_all",
+    fh: FileHandler = Depends(get_file_handler),
 ):
     try:
         match type:
@@ -40,7 +38,9 @@ async def list_files(
 
 @router.get("/read")
 async def read_file(
-    path: str, content: Literal["full", "frontmatter", "text"] = "full"
+    path: str,
+    content: Literal["full", "frontmatter", "text"] = "full",
+    fh: FileHandler = Depends(get_file_handler),
 ):
     try:
         match content:
@@ -59,7 +59,9 @@ async def read_file(
 
 
 @router.post("/write")
-async def write_file(path: str, content: FileContent):
+async def write_file(
+    path: str, content: FileContent, fh: FileHandler = Depends(get_file_handler)
+):
     try:
         fh.write_file(path, content.frontmatter, content.content)
         return {"status": "success"}
@@ -69,7 +71,10 @@ async def write_file(path: str, content: FileContent):
 
 @router.patch("/write")
 async def update_file(
-    path: str, type: Literal["frontmatter", "content"], content: FileContent
+    path: str,
+    type: Literal["frontmatter", "content"],
+    content: FileContent,
+    fh: FileHandler = Depends(get_file_handler),
 ):
     logger.info(f"Updating file at path: {path} with type: {type}")
     try:

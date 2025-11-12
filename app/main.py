@@ -1,6 +1,7 @@
+import sys
+
 from fastapi import FastAPI
 from loguru import logger
-import sys
 
 from .router import router
 

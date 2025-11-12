@@ -1,9 +1,11 @@
 import os
-import pytest
 from tempfile import TemporaryDirectory
+
+import pytest
 from fastapi.testclient import TestClient
+
+from app.file_handler import FileHandler, get_file_handler
 from app.main import app
-from app.file_handler import get_file_handler, FileHandler
 
 
 @pytest.fixture()

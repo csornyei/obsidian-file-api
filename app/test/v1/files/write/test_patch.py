@@ -46,6 +46,37 @@ def test_update_frontmatter_success(
         )
 
 
+def test_update_frontmatter_partial(
+    client: TestClient, setup_temp_dir_content, temp_dir
+):
+    files = ["file1.md"]
+    content = {
+        "file1.md": "---\ntitle: Old Title\nauthor: Old Author\n---\nOld content."
+    }
+
+    setup_temp_dir_content(files, content)
+    payload = {
+        "frontmatter": {"title": "New Title"},
+        "content": [],
+    }
+
+    response = client.patch(
+        "/v1/files/write/",
+        params={"path": "file1.md", "type": "frontmatter"},
+        json=payload,
+    )
+
+    assert response.status_code == 204
+
+    file_path = os.path.join(temp_dir, "file1.md")
+    with open(file_path, "r") as f:
+        file_content = f.read()
+        assert (
+            "---\ntitle: New Title\nauthor: Old Author\n---\nOld content."
+            == file_content
+        )
+
+
 def test_update_content_success(client: TestClient, setup_temp_dir_content, temp_dir):
     files = ["file1.md"]
     content = {

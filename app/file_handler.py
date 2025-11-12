@@ -4,6 +4,7 @@ from typing import Literal
 import yaml
 
 from .env import BASE_DIR
+from .exception import CustomError
 
 
 class FileHandler:
@@ -16,6 +17,40 @@ class FileHandler:
 
         self.base_folder = base_folder
 
+    def __raise_absolute_path_error(self, path: str) -> bool:
+        if Path(path).is_absolute():
+            raise CustomError(
+                status_code=400, message="The path must be a relative path."
+            )
+        return False
+
+    def __raise_not_exist_error(self, path: str) -> bool:
+        full_path = Path(self.base_folder) / path
+        if not full_path.exists():
+            raise CustomError(
+                status_code=404,
+                message=f"The provided path '{path}' does not exist within the base folder.",
+            )
+        return False
+
+    def __raise_not_file_error(self, path: str) -> bool:
+        full_path = Path(self.base_folder) / path
+        if not full_path.is_file():
+            raise CustomError(
+                status_code=404,
+                message=f"The provided file_path '{path}' is not a valid file within the base folder.",
+            )
+        return False
+
+    def __raise_not_dir_error(self, path: str) -> bool:
+        full_path = Path(self.base_folder) / path
+        if not full_path.is_dir():
+            raise CustomError(
+                status_code=404,
+                message=f"The provided dir_path '{path}' is not a valid directory within the base folder.",
+            )
+        return False
+
     def __filter(self, items: list[Path]) -> list[Path]:
         items = filter(
             lambda x: not any(part.startswith(".") for part in x.parts), items
@@ -24,14 +59,11 @@ class FileHandler:
         return list(items)
 
     def list_files(self, file_path: str, all: bool = False) -> list[str]:
-        if Path(file_path).is_absolute():
-            raise ValueError("The file_path must be a relative path.")
+        self.__raise_absolute_path_error(file_path)
+        self.__raise_not_exist_error(file_path)
+        self.__raise_not_dir_error(file_path)
 
         full_path = Path(self.base_folder) / file_path
-        if not full_path.exists() or not full_path.is_dir():
-            raise ValueError(
-                f"The provided file_path '{file_path}' is not a valid directory within the base folder."
-            )
 
         if all:
             files = [
@@ -49,14 +81,11 @@ class FileHandler:
         return self.__filter(files)
 
     def list_dirs(self, dir_path: str, all: bool = False) -> list[str]:
-        if Path(dir_path).is_absolute():
-            raise ValueError("The dir_path must be a relative path.")
+        self.__raise_absolute_path_error(dir_path)
+        self.__raise_not_exist_error(dir_path)
+        self.__raise_not_dir_error(dir_path)
 
         full_path = Path(self.base_folder) / dir_path
-        if not full_path.exists() or not full_path.is_dir():
-            raise ValueError(
-                f"The provided dir_path '{dir_path}' is not a valid directory within the base folder."
-            )
 
         if all:
             dirs = [
@@ -74,14 +103,17 @@ class FileHandler:
             return self.__filter(dirs)
 
     def read_file(self, file_path: str) -> list[str]:
-        if Path(file_path).is_absolute():
-            raise ValueError("The file_path must be a relative path.")
+        self.__raise_absolute_path_error(file_path)
+        self.__raise_not_exist_error(file_path)
+        self.__raise_not_file_error(file_path)
+
+        if not file_path.endswith(".md"):
+            raise CustomError(
+                status_code=400,
+                message="Only markdown (.md) files can be read.",
+            )
 
         full_path = Path(self.base_folder) / file_path
-        if not full_path.exists() or not full_path.is_file():
-            raise ValueError(
-                f"The provided file_path '{file_path}' is not a valid file within the base folder."
-            )
 
         with open(full_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -135,18 +167,19 @@ class FileHandler:
     def write_file(
         self, file_path: str, frontmatter: dict | None, content: list[str] | None
     ) -> None:
-        if Path(file_path).is_absolute():
-            raise ValueError("The file_path must be a relative path.")
+        self.__raise_absolute_path_error(file_path)
 
         full_path = Path(self.base_folder) / file_path
         if not full_path.parent.exists():
-            raise ValueError(
-                f"The directory for the provided file_path '{file_path}' does not exist within the base folder."
+            raise CustomError(
+                status_code=404,
+                message=f"The directory '{Path(file_path).parent}' does not exist within the base folder.",
             )
 
         if full_path.exists():
-            raise ValueError(
-                f"The file '{file_path}' already exists. Overwriting is not allowed."
+            raise CustomError(
+                status_code=400,
+                message=f"The file '{file_path}' already exists. Overwriting is not allowed.",
             )
 
         lines = []
@@ -172,14 +205,11 @@ class FileHandler:
         - Appending the existing content of the file.
         - Adding any new content provided.
         """
-        if Path(file_path).is_absolute():
-            raise ValueError("The file_path must be a relative path.")
+        self.__raise_absolute_path_error(file_path)
+        self.__raise_not_exist_error(file_path)
+        self.__raise_not_file_error(file_path)
 
         full_path = Path(self.base_folder) / file_path
-        if not full_path.exists() or not full_path.is_file():
-            raise ValueError(
-                f"The provided file_path '{file_path}' is not a valid file within the base folder."
-            )
 
         lines = ["---"]
 
@@ -208,6 +238,11 @@ class FileHandler:
             return
 
         self.__update_file(file_path, updated_fm, None)
+
+    def update_content(self, file_path: str, content: list[str]) -> None:
+        original_fm = self.get_frontmatter(file_path)
+
+        self.__update_file(file_path, original_fm, content)
 
 
 def get_file_handler(base_folder: str = BASE_DIR) -> FileHandler:

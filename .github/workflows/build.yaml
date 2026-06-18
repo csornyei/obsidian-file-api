@@ -65,7 +65,7 @@ jobs:
         run: uv python install
 
       - name: Install the project
-        run: uv sync --locked --all-extras --dev
+        run: uv sync --locked --all-extras --all-groups
 
       - name: Run tests
         run: uv run pytest --cov=app
@@ -89,14 +89,8 @@ jobs:
       - name: Install the project
         run: uv sync --locked --all-extras --dev
 
-      - name: Run ruff
-        run: uv run ruff check .
-
-      - name: Run black
-        run: uv run black --check .
-
-      - name: Run isort
-        run: uv run isort --check-only .
+      - name: Run pre-commit checks
+        run: uv run pre-commit run --all-files
 
   build:
     name: Build and Push Docker Image
@@ -130,7 +124,6 @@ jobs:
         run: |
           python utils/check_version.py > version.txt
           echo "version=$(cut -d= -f2 version.txt)" >> $GITHUB_OUTPUT
-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

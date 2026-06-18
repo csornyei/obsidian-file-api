@@ -1,16 +1,17 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.10.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
     hooks:
-      - id: black
-        language_version: python3.9
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.9
     hooks:
-      - id: isort
-        name: isort (python)
-        args: ["--profile", "black"]
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.8.2
+      - id: ruff-check
+      - id: ruff-format
+  - repo: https://github.com/allganize/ty-pre-commit
+    rev: v0.0.29
     hooks:
-      - id: ruff
+      - id: ty-check
+        args: [--python, .venv/bin/python3]

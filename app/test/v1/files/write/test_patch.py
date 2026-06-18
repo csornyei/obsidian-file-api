@@ -2,18 +2,6 @@ import os
 
 from fastapi.testclient import TestClient
 
-from app.main import app
-
-client = TestClient(app)
-
-""" Test cases for /v1/files/write PATCH endpoint:
-    - update frontmatter
-    - update content
-    - error handling:
-        absolute path
-        non-existent file
-"""
-
 
 def test_update_frontmatter_success(
     client: TestClient, setup_temp_dir_content, temp_dir
@@ -100,7 +88,6 @@ def test_update_content_success(client: TestClient, setup_temp_dir_content, temp
     file_path = os.path.join(temp_dir, "file1.md")
     with open(file_path, "r") as f:
         file_content = f.read()
-        print(file_content)
         assert (
             "---\ntitle: Test File\nauthor: Test Author\n---\nOld content.\nThis is the new content of the file."
             == file_content

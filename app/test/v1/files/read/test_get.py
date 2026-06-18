@@ -1,9 +1,5 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
-
-client = TestClient(app)
-
 
 def test_read_full_file(client: TestClient, setup_temp_dir_content):
     files = ["file1.md"]
@@ -33,8 +29,6 @@ def test_read_frontmatter(client: TestClient, setup_temp_dir_content):
     response = client.get(
         "/v1/files/read/", params={"path": "file1.md", "content": "frontmatter"}
     )
-
-    print(response.json())
 
     assert response.status_code == 200
     assert "frontmatter" in response.json()

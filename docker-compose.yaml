@@ -3,9 +3,19 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: file_api_container
+    container_name: file_api
     ports:
-      - "8000:8000"
+      - "8005:8000"
+    environment:
+      - BASE_DIR=/app/data
     volumes:
-      - ./data:/app/data
+      - ./scratch/vault:/app/data
     restart: unless-stopped
+    networks:
+      - mimir_default
+      - default
+
+networks:
+  mimir_default:
+    name: mimir_default
+    external: true

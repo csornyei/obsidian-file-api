@@ -2,9 +2,13 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
+from opentelemetry import trace
 
-from .env import BASE_DIR
+from .config import config
 from .exception import CustomError
+from .logger import logger
+
+tracer = trace.get_tracer(__name__)
 
 
 class FileHandler:
@@ -17,11 +21,23 @@ class FileHandler:
 
         self.base_folder = base_folder
 
-    def __raise_absolute_path_error(self, path: str) -> bool:
+    def __validate_path_safety(self, path: str) -> None:
         if Path(path).is_absolute():
             raise CustomError(
                 status_code=400, message="The path must be a relative path."
             )
+        full_path = (Path(self.base_folder) / path).resolve()
+        base_resolved = Path(self.base_folder).resolve()
+        try:
+            full_path.relative_to(base_resolved)
+        except ValueError:
+            raise CustomError(
+                status_code=400,
+                message="The path must be within the base folder.",
+            )
+
+    def __raise_absolute_path_error(self, path: str) -> bool:
+        self.__validate_path_safety(path)
         return False
 
     def __raise_not_exist_error(self, path: str) -> bool:
@@ -35,6 +51,11 @@ class FileHandler:
 
     def __raise_not_file_error(self, path: str) -> bool:
         full_path = Path(self.base_folder) / path
+        if full_path.is_symlink():
+            raise CustomError(
+                status_code=400,
+                message="Symlinks are not allowed.",
+            )
         if not full_path.is_file():
             raise CustomError(
                 status_code=404,
@@ -44,6 +65,11 @@ class FileHandler:
 
     def __raise_not_dir_error(self, path: str) -> bool:
         full_path = Path(self.base_folder) / path
+        if full_path.is_symlink():
+            raise CustomError(
+                status_code=400,
+                message="Symlinks are not allowed.",
+            )
         if not full_path.is_dir():
             raise CustomError(
                 status_code=404,
@@ -115,18 +141,36 @@ class FileHandler:
 
         full_path = Path(self.base_folder) / file_path
 
-        with open(full_path, "r", encoding="utf-8") as f:
-            content = f.read()
+        try:
+            with open(full_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except UnicodeDecodeError as e:
+            logger.warning(
+                "file_encoding_error",
+                file_path=file_path,
+                error="utf8_decode_failed",
+            )
+            raise CustomError(
+                status_code=400,
+                message="File is not valid UTF-8.",
+            ) from e
 
         lines = content.splitlines()
+
+        logger.debug(
+            "file_read_raw",
+            file_path=file_path,
+            line_count=len(lines),
+            byte_size=len(content),
+        )
 
         return lines
 
     def get_frontmatter(self, file_path: str) -> dict:
         lines = self.read_file(file_path)
-        frontmatter: str = []
+        frontmatter: list[str] = []
 
-        if lines[0].strip() == "---":
+        if lines and lines[0].strip() == "---":
             for line in lines[1:]:
                 line = line.strip()
                 if line == "---":
@@ -137,7 +181,13 @@ class FileHandler:
             return {}
 
         frontmatter_str = "\n".join(frontmatter)
-        return yaml.safe_load(frontmatter_str)
+        parsed = yaml.safe_load(frontmatter_str)
+        if not isinstance(parsed, dict):
+            raise CustomError(
+                status_code=400,
+                message="Frontmatter must be valid YAML mapping.",
+            )
+        return parsed
 
     def get_text_content(self, file_path: str) -> list[str]:
         lines = self.read_file(file_path)
@@ -193,8 +243,28 @@ class FileHandler:
         if content:
             lines.extend(content)
 
-        with open(full_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
+        try:
+            file_content = "\n".join(lines)
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(file_content)
+
+            logger.debug(
+                "file_write_raw",
+                file_path=file_path,
+                line_count=len(lines),
+                byte_size=len(file_content),
+            )
+
+        except OSError as e:
+            logger.error(
+                "file_write_io_error",
+                file_path=file_path,
+                error=str(e),
+            )
+            raise CustomError(
+                status_code=500,
+                message=f"Failed to write file: {str(e)}",
+            ) from e
 
     def __update_file(
         self, file_path: str, frontmatter: dict | None, content: list[str] | None
@@ -226,8 +296,28 @@ class FileHandler:
         if content:
             lines.extend(content)
 
-        with open(full_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
+        try:
+            file_content = "\n".join(lines)
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(file_content)
+
+            logger.debug(
+                "file_update_raw",
+                file_path=file_path,
+                line_count=len(lines),
+                byte_size=len(file_content),
+            )
+
+        except OSError as e:
+            logger.error(
+                "file_update_io_error",
+                file_path=file_path,
+                error=str(e),
+            )
+            raise CustomError(
+                status_code=500,
+                message=f"Failed to write file: {str(e)}",
+            ) from e
 
     def update_frontmatter(self, file_path: str, frontmatter: dict) -> None:
         original_fm = self.get_frontmatter(file_path)
@@ -245,5 +335,5 @@ class FileHandler:
         self.__update_file(file_path, original_fm, content)
 
 
-def get_file_handler(base_folder: str = BASE_DIR) -> FileHandler:
-    return FileHandler(base_folder=base_folder)
+def get_file_handler() -> FileHandler:
+    return FileHandler(base_folder=config.base_dir)

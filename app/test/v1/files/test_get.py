@@ -1,9 +1,5 @@
 from fastapi.testclient import TestClient
 
-from app.main import app
-
-client = TestClient(app)
-
 
 def test_list_files(client: TestClient, setup_temp_dir_content):
     files = ["file1.md", "file2.md", "file3.md", "dir1/file4.md"]

@@ -4,7 +4,8 @@ from pathlib import Path
 
 data = tomllib.loads(Path("pyproject.toml").read_text())
 
-version = data.get("project").get("version")
+project_data = data.get("project")
+version = project_data.get("version") if project_data else None
 
 if not version:
     print("Could not find version in pyproject.toml", file=sys.stderr)

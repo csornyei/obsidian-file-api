@@ -77,12 +77,12 @@ class FileHandler:
             )
         return False
 
-    def __filter(self, items: list[Path]) -> list[Path]:
-        items = filter(
-            lambda x: not any(part.startswith(".") for part in x.parts), items
-        )
-        items = map(lambda x: x.as_posix(), items)
-        return list(items)
+    def __filter(self, items: list[Path]) -> list[str]:
+        return [
+            x.as_posix()
+            for x in items
+            if not any(part.startswith(".") for part in x.parts)
+        ]
 
     def list_files(self, file_path: str, all: bool = False) -> list[str]:
         self.__raise_absolute_path_error(file_path)

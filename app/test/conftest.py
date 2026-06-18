@@ -1,5 +1,6 @@
 import os
 from tempfile import TemporaryDirectory
+from typing import Optional
 
 import pytest
 from fastapi.testclient import TestClient
@@ -16,7 +17,7 @@ def temp_dir():
 
 @pytest.fixture
 def setup_temp_dir_content(temp_dir):
-    def setup_content(files: list[str], content: dict[str, str] = None):
+    def setup_content(files: list[str], content: Optional[dict[str, str]] = None):
         content = content or {}
         for file in files:
             file_path = os.path.join(temp_dir, file)

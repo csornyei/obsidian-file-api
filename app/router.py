@@ -1,5 +1,5 @@
 import time
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, Response
 from opentelemetry import trace
@@ -18,7 +18,7 @@ class FileContent(BaseModel):
 
     @field_validator("frontmatter", "content", mode="before")
     @classmethod
-    def validate_at_least_one(cls, v: any) -> any:
+    def validate_at_least_one(cls, v: Any) -> Any:
         return v
 
     def __init__(self, **data):
@@ -274,6 +274,7 @@ async def update_file(
                     fm_size = (
                         len(str(content.frontmatter)) if content.frontmatter else 0
                     )
+                    assert content.frontmatter is not None
                     fh.update_frontmatter(path, content.frontmatter)
                     update_size = fm_size
 
@@ -284,6 +285,7 @@ async def update_file(
                         else 0
                     )
                     logger.info(content.content)
+                    assert content.content is not None
                     fh.update_content(path, content.content)
                     update_size = content_size
 

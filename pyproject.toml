@@ -1,6 +1,6 @@
 [project]
 name = "obsidian-file-api"
-version = "0.1.1"
+version = "1.0.0"
 description = "File API for Obsidian vaults using FastAPI"
 readme = "README.md"
 requires-python = ">=3.13"
